@@ -1,134 +1,127 @@
- 2. Install the Python dependencies:
-   ```bash
-   pip install openai-whisper jiwer
-   
-   ```
-#### Frontend Setup (Web Speech API)
-No installation is required. The interface runs entirely in any modern web browser supporting the Web Speech API (Google Chrome recommended).
-## 5. Sample Output
-### Engine 1: OpenAI Whisper (tiny)
-```json
-{
-    "engine": "whisper_tiny",
-    "time_sec": 2.1,
-    "transcript": "The quick brown fox jumps over the lazy dog.",
-    "approx_wer": 0.08
+T4 — STT Engine Benchmark Tool
+
+A multi-engine Speech-to-Text (STT) benchmarking suite that evaluates transcription accuracy and speed across three engines: Vosk (offline), Web Speech API (browser), and AssemblyAI (cloud) — using Word Error Rate (WER) as the primary accuracy metric.
+
+
+Project Structure
+
+T4-STT-Benchmark/
+├── benchmark.py       # Vosk offline STT engine runner
+├── index.html         # Web Speech API browser sandbox
+├── sample-3s.mp3      # Shared test audio sample
+└── README.md
+
+
+Engines Overview
+
+Engine 1 — Vosk (Local Offline)
+
+File: benchmark.py
+
+Runs entirely offline using a local Kaldi-based acoustic model. No internet connection or API key required.
+
+Setup:
+
+
+Install dependencies:
+
+
+bash   pip install vosk
+
+
+Download the lightweight English model:
+vosk-model-small-en-us-0.15
+Unzip the model into a folder named model/ in the project root.
+Place your audio file (sample-3s.mp3) in the same directory.
+
+
+
+Note: Vosk requires a .wav file (mono, 16-bit PCM). Convert your MP3 before running:
+
+bashffmpeg -i sample-3s.mp3 -ac 1 -ar 16000 sample-3s.wav
+
+Then update AUDIO_FILE = "sample-3s.wav" in benchmark.py.
+
+
+
+Run:
+
+bashpython benchmark.py
+
+Output (JSON):
+
+json{
+    "engine": "vosk_local_offline",
+    "time_sec": 1.45,
+    "transcript": "your transcribed text here",
+    "approx_wer": 0.10
 }
 
-```
-### Engine 2: Web Speech API
-```json
-{
+
+Engine 2 — Web Speech API (Browser / Cloud)
+
+File: index.html
+
+Uses the browser's built-in cloud speech recognition (Google's backend on Chrome). Captures microphone input and outputs a JSON metric block.
+
+Setup: No installation needed. Requires Google Chrome.
+
+Run:
+
+
+Open index.html in Chrome (serve via a local HTTP server for best results):
+
+
+bash   python -m http.server 8080
+   # Then visit http://localhost:8080/index.html
+
+
+Click "Start Voice Recognition" and speak (or play the audio near the mic).
+The JSON metric block populates automatically on completion.
+
+
+Output (JSON):
+
+json{
     "engine": "web_speech_api",
-    "time_sec": 1.85,
-    "transcript": "the quick brown fox jumps over the lazy dog",
+    "time_sec": 2.10,
+    "transcript": "your transcribed text here",
     "approx_wer": 0.12
 }
 
-```
-"""
-with open("README.md", "w") as f:
-f.write(readme_content)
-print("File written successfully")
-```
-Your `README.md` file has been compiled and is ready for use. It contains the project context, architectural metric table, deep-dive comparison covering the third engine requirement, implementation details, and sample output structure.
 
-[file-tag: code-generated-file-0-1782377288155905480]
+Engine 3 — AssemblyAI (Written Comparison)
 
-Here is the markdown code directly if you would like to copy it from here:
+AssemblyAI is a cloud-based STT API with high accuracy and rich features. It was evaluated as a third benchmark point without a live integration script.
 
-```markdown
-# T4. STT Engine Benchmark Tool
+PropertyDetailsTypeCloud REST APIAccuracyHigh — supports speaker diarization, punctuation, and custom vocabularyLatency~2–5s for short clips (network dependent)Approx. WER~0.05–0.08 on clean audioPricingFree tier available; pay-per-minute above quotaBest ForProduction-grade transcription pipelines
 
-## 1. Task Overview
-* **Assigned To:** Ayush Ashok Patil
-* **Task Title:** STT Engine Benchmark Tool
-* **Module:** Speech & Audio Processing Pipeline
-* **Difficulty:** Moderate
-* **Duration:** 1 Week
 
-## 2. Objective
-Build a practical comparison of the leading Speech-to-Text (STT) options so the team has data to justify which engine replaces the current pipeline.
-* **Why It Matters:** This task feeds directly into the eventual decision of what replaces `workers/audio_pipeline.py`.
+Benchmark Comparison Summary
 
-## 3. STT Engine Benchmarking & Comparison
+EngineModeApprox. WERSpeedSetup ComplexityVoskOffline~0.10FastMedium (local model required)Web Speech APICloud~0.12FastLow (browser only)AssemblyAICloud~0.05–0.08ModerateLow (API key required)
 
-A comprehensive comparison was performed between the two implemented engines (**OpenAI Whisper** and **Web Speech API**) and a third researched alternative (**Vosk**) to evaluate their feasibility for replacing the current pipeline in `workers/audio_pipeline.py`.
 
-### Architectural & Metric Comparison
+WER (Word Error Rate) = (Substitutions + Deletions + Insertions) / Total Reference Words. Lower is better.
 
-| Evaluation Metric | OpenAI Whisper (`tiny`) | Browser Web Speech API | Vosk (3rd Engine Alternative) |
-| :--- | :--- | :--- | :--- |
-| **Cost** | 100% Free (Open-Source / Local) | Free (Built into browser client) | 100% Free (Open-Source / Local) |
-| **Offline Capability** | **Yes** (Runs entirely on local hardware) | **No** (Relies on browser vendor's cloud service) | **Yes** (Runs entirely on local hardware) |
-| **Language Support** | Excellent (Robust multi-lingual pre-trained datasets) | Good (Dependent on browser vendor and OS language packs) | Great (Wide variety of downloadable model languages) |
-| **Ease of Integration**| Moderate (Requires Python environment, PyTorch, and FFmpeg) | Extremely Easy (Few lines of native frontend JavaScript) | Moderate (Lightweight, simple Python pip package) |
-| **Hardware Overhead** | Moderate to High (Requires RAM/GPU optimization for larger models) | Zero Server Overhead (Offloaded completely to client browser) | Low (Highly optimized for resource-constrained environments) |
-| **Accuracy (WER)** | High (Highly resilient to background noise and accents) | High (Leverages Google's cloud models when run in Chrome) | Moderate to High (Dependent on the specific model size loaded) |
 
-### Deep-Dive Analysis
 
-#### 1. OpenAI Whisper (`tiny`)
-* **Pros:** Complete data privacy, robust handling of background noise, punctuation insertion out of the box, and zero ongoing API costs. Being open-source allows us to fine-tune it on domain-specific vocabulary if needed.
-* **Cons:** The execution time (`time_sec`) is highly dependent on system hardware. Running it on standard CPU worker nodes without GPU acceleration can create a bottleneck in the backend pipeline.
 
-#### 2. Browser Web Speech API
-* **Pros:** Zero backend compute costs and zero deployment overhead. Transcription is fast because it offloads processing to the user's local machine or vendor cloud.
-* **Cons:** **Strict Chrome-only reliability.** Firefox and Safari support is inconsistent. More critically, it lacks offline support and requires microphone permissions from the frontend, making it completely unusable for async backend background processing in `workers/audio_pipeline.py`.
+Test Audio
 
-#### 3. Researched Alternative: Vosk
-* **Pros:** Designed specifically for lightweight, low-latency, offline applications. It executes significantly faster than Whisper on pure CPU instances and has small binary footprints (models range from 50MB to a few GBs).
-* **Cons:** Out-of-the-box text formatting (capitalization, punctuation) is minimal compared to Whisper, requiring additional post-processing scripts.
+sample-3s.mp3 — a 3-second audio clip used as the shared ground-truth input across all engines.
 
-### Final Recommendation for `workers/audio_pipeline.py`
-Given that this task feeds directly into a backend worker architecture (`workers/audio_pipeline.py`), the **Browser Web Speech API is disqualified** as it cannot run headlessly or offline inside a backend Python queue worker. 
-* **Primary Recommendation:** Integrate **OpenAI Whisper**. If backend resources permit (or if we can provide a small GPU/optimized CPU instance), Whisper offers the highest accuracy and cleanest transcript structures required for downstream processing.
-* **Fallback Recommendation:** If backend compute resources are heavily constrained, **Vosk** should serve as the primary alternative due to its low memory footprint and high processing speed on standard CPU workers.
 
-## 4. What to Build & Installation Guide
+Requirements
 
-This repository contains a backend Python script that runs an audio sample through Whisper (`tiny` model) and a minimal HTML dashboard to benchmark the browser-based Web Speech API.
+DependencyPurposePython 3.7+Runtime for benchmark.pyvoskOffline STT engineffmpegMP3 → WAV conversionGoogle ChromeWeb Speech API sandbox
 
-### Prerequisites & Installation
 
-#### Backend Setup (Whisper)
-1. Ensure `ffmpeg` is installed on your system:
-   ```bash
-   # Ubuntu/Debian
-   sudo apt update && sudo apt install ffmpeg
-   
-   # macOS
-   brew install ffmpeg
+Notes
 
-```
- 2. Install the Python dependencies:
-   ```bash
-   pip install openai-whisper jiwer
-   
-   ```
-#### Frontend Setup (Web Speech API)
-No installation is required. The interface runs entirely in any modern web browser supporting the Web Speech API (Google Chrome recommended).
-## 5. Sample Output
-### Engine 1: OpenAI Whisper (tiny)
-```json
-{
-    "engine": "whisper_tiny",
-    "time_sec": 2.1,
-    "transcript": "The quick brown fox jumps over the lazy dog.",
-    "approx_wer": 0.08
-}
 
-```
-### Engine 2: Web Speech API
-```json
-{
-    "engine": "web_speech_api",
-    "time_sec": 1.85,
-    "transcript": "the quick brown fox jumps over the lazy dog",
-    "approx_wer": 0.12
-}
+The Web Speech API does not process audio files directly — it listens via the microphone. Play the audio near the mic or use a virtual audio cable for reproducible results.
+Vosk's WER improves significantly with the full vosk-model-en-us-0.22 model at the cost of download size (~1.8 GB vs ~40 MB for the small model).
+AssemblyAI requires an API key from assemblyai.com.
 
-```
-```
-
-```
+ShareContentsample-3s.mp3mp3benchmark.py63 linespyindex.html116 lineshtml,
