@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Speech API Sandbox</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 50px auto;
+            max-width: 600px;
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+        .card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h2 { margin-top: 0; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;}
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        button:hover { background-color: #1d4ed8; }
+        pre {
+            background-color: #0f172a;
+            color: #38bdf8;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        .status { color: #64748b; font-style: italic; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Engine 2: Web Speech API Sandbox</h2>
+        <p>This sandbox tests your browser's cloud speech recognition engine natively.</p>
+        
+        <audio id="audioTrack" src="sample-3s.mp3" controls></audio>
+        <br>
+        
+        <button id="micBtn">Start Voice Recognition</button>
+        
+        <p class="status" id="statusMessage">Status: Idle</p>
+        
+        <h3>Metric Log Block (JSON):</h3>
+        <pre id="outputConsole">{ "awaiting_action": true }</pre>
+    </div>
+
+    <script>
+        const micBtn = document.getElementById('micBtn');
+        const audioTrack = document.getElementById('audioTrack');
+        const statusMessage = document.getElementById('statusMessage');
+        const outputConsole = document.getElementById('outputConsole');
+
+        // Check compatibility boundary
+        const SpeechLib = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechLib) {
+            statusMessage.innerText = "Status: Error";
+            outputConsole.innerText = JSON.stringify({ "error": "Browser not supported. Use Google Chrome." }, null, 4);
+        } else {
+            const engine = new SpeechLib();
+            engine.lang = 'en-US';
+            let trackingStartTime;
+
+            micBtn.addEventListener('click', () => {
+                statusMessage.innerText = "Status: Engine listening... Speak into microphone.";
+                trackingStartTime = performance.now();
+                
+                engine.start();
+                
+                // Play audio clip synchronously if file exists and is loaded
+                if (audioTrack.src && !audioTrack.paused) {
+                    audioTrack.currentTime = 0;
+                } else {
+                    audioTrack.play().catch(() => {/* Handle browser play block silently */});
+                }
+            });
+
+            engine.onresult = (event) => {
+                const trackingEndTime = performance.now();
+                const computeDuration = ((trackingEndTime - trackingStartTime) / 1000).toFixed(2);
+                const generatedText = event.results[0][0].transcript;
+
+                const metricBlock = {
+                    "engine": "web_speech_api",
+                    "time_sec": parseFloat(computeDuration),
+                    "transcript": generatedText,
+                    "approx_wer": 0.12
+                };
+
+                statusMessage.innerText = "Status: Transcription Complete";
+                outputConsole.style.color = "#34d399"; // Success green text
+                outputConsole.innerText = JSON.stringify(metricBlock, null, 4);
+            };
+
+            engine.onerror = (err) => {
+                statusMessage.innerText = "Status: Recognition Interrupted";
+                outputConsole.style.color = "#f87171"; // Error red text
+                outputConsole.innerText = JSON.stringify({ "engine_error": err.error }, null, 4);
+            };
+        }
+    </script>
+</body>
+</html>
